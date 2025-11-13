@@ -1,0 +1,93 @@
+# ============================================
+# Reverse proxy pour Rocket.Chat
+# ============================================
+campus-cu.com {
+    handle /ws {
+        reverse_proxy https://172.20.0.50:8089 {
+            transport http {
+                tls_insecure_skip_verify
+            }
+            header_up Host {http.request.host}
+            header_up Upgrade {http.request.header.Upgrade}
+            header_up Connection {http.request.header.Connection}
+            header_up Origin {http.request.header.Origin}
+        }
+    }
+    
+    reverse_proxy rocketchat:3000
+    
+    tls internal
+}
+
+
+# ============================================
+# Reverse proxy pour Jitsi Meet (CORRIGÉ avec port 8443)
+# ============================================
+meet.campus-cu.com {
+    # WebSocket XMPP (signalisation Prosody) - PORT 443
+    handle /xmpp-websocket* {
+        reverse_proxy prosody:5280 {
+            header_up Host {http.request.host}
+            header_up X-Forwarded-For {http.request.remote}
+            header_up X-Forwarded-Proto {http.request.scheme}
+        }
+    }
+
+    # WebSocket Colibri (flux média JVB)
+    handle /colibri-ws/* {
+        reverse_proxy jvb:9090 {
+            header_up Host {http.request.host}
+            header_up X-Forwarded-For {http.request.remote}
+            header_up X-Forwarded-Proto {http.request.scheme}
+        }
+    }
+    
+    # BOSH endpoint
+    handle /http-bind {
+        reverse_proxy prosody:5280 {
+            header_up Host {http.request.host}
+            header_up X-Forwarded-For {http.request.remote}
+            header_up X-Forwarded-Proto {http.request.scheme}
+        }
+    }
+
+    # Interface Web Jitsi
+    reverse_proxy web:80
+
+    tls internal 
+    #{
+    #    protocols tls1.2
+    #}
+}
+# Monitoring
+monitoring.campus-cu.com {
+    reverse_proxy grafana:3001
+    tls internal
+}
+
+prometheus.campus-cu.com {
+    reverse_proxy prometheus:9091
+    tls internal
+}
+
+# Service supplémentaire pour le port 8443
+#:8443 {
+    # WebSocket XMPP (pour compatibilité)
+ #   handle /xmpp-websocket* {
+  #      reverse_proxy prosody:5280
+   # }
+    
+    #tls internal
+#}
+
+# ============================================
+# Reverse proxy pour VoIP (MikoPBX)
+# ============================================
+#voip.campus-cu.com {
+#    reverse_proxy /asterisk/* mikopbx:8089 {
+#        transport http {
+#            tls_insecure_skip_verify
+#        }
+#    }
+#    tls internal
+#}
